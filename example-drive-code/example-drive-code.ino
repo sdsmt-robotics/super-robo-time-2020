@@ -4,14 +4,14 @@
 #include <L289N.h>       // https://github.com/sdsmt-robotics/L298N
 #include <analogWrite.h> // https://github.com/ERROPiX/ESP32_AnalogWrite
 
-L289N lMotor(23, 22, 1 );
-L289N rMotor(3,  21, 19);
+L289N rMotor(23, 22, 1 , true);
+L289N lMotor(3,  21, 19, true);
 int lVel, rVel;
 
 void setup()
 {
   Serial.begin(115200);
-  Dabble.begin("Dustin's ESP");
+  Dabble.begin("DEFAULT SRT ROBOT NAME"); //change the name inside the quotes, this will appear in your Bluetooth menu
   analogWriteFrequency(2000);
   lMotor.init();
   rMotor.init();
