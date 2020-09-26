@@ -30,13 +30,14 @@ int lVel, rVel;
 
 //ultrasonic distance sensor setup
 Ultrasonic ultrasonic(16, 17); //TRIG, ECHO
-const int ULTRASONIC_SAMPLES = 20; //number of samples to average across
+const int ULTRASONIC_NUM_SAMPLES = 20; //number of samples to average across
 const int ULTRASONIC_PERIOD = 5; //milliseconds between samples
 uint64_t prevTimeUltrasonic = 0; //keeps track of the last time we grabbed a sample from the ultrasonic sensor
 int ultrasonicAverageIndex = 0; //keeps track of where in the rolling average array we should write to
 int ultrasonicSum = 0; //don't directly read this, use the average. used in calculating the average
 int ultrasonicAverage = 0; //holds the calculated rolling average from the ultrasonic sensor's samples
 bool ultrasonicRun = 1; //1 to run the ultrasonic sensor, 0 to not. stop running if you need to free up some CPU cycles
+int ultrasonicSamples[20] = {0};
 
 //status LED!
 const int BLINK_PERIOD = 200; //ms between blinks
@@ -91,6 +92,20 @@ void loop() {
   //handle getting and averaging samples from the ultrasonic sensor
   if (ultrasonicRun)
   {
-    
+    if (millis() > prevTimeUltrasonic + ULTRASONIC_PERIOD)
+    {
+      ultrasonicSamples[ultrasonicAverageIndex++] = ultrasonic.Ranging(CM);
+      if (ultrasonicAverageIndex >= ULTRASONIC_NUM_SAMPLES) ultrasonicAverageIndex = 0;
+
+      ultrasonicSum = 0;
+      for (int i = 0; i < ULTRASONIC_NUM_SAMPLES; i++)
+      {
+        ultrasonicSum += ultrasonicSamples[i];  
+      }
+
+      ultrasonicAverage = ultrasonicSum / ULTRASONIC_NUM_SAMPLES;
+      
+      prevTimeUltrasonic = millis();
+    }
   }
 }
