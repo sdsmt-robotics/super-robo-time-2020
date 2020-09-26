@@ -21,16 +21,28 @@ This code has no copyright license, do whatever you want with it
 #include <DabbleESP32.h> // https://github.com/STEMpedia/DabbleESP32
 #include <L289N.h>       // https://github.com/sdsmt-robotics/L298N
 #include <analogWrite.h> // https://github.com/ERROPiX/ESP32_AnalogWrite
+#include <Ultrasonic.h>  // https://github.com/JRodrigoTech/Ultrasonic-HC-SR04
 
 //motor driver setup
 L289N rMotor(23, 22, 21, true);
 L289N lMotor(19, 18, 5,  true);
 int lVel, rVel;
 
+//ultrasonic distance sensor setup
+Ultrasonic ultrasonic(16, 17); //TRIG, ECHO
+const int ULTRASONIC_NUM_SAMPLES = 20; //number of samples to average across
+const int ULTRASONIC_PERIOD = 5; //milliseconds between samples
+uint64_t prevTimeUltrasonic = 0; //keeps track of the last time we grabbed a sample from the ultrasonic sensor
+int ultrasonicAverageIndex = 0; //keeps track of where in the rolling average array we should write to
+int ultrasonicSum = 0; //don't directly read this, use the average. used in calculating the average
+int ultrasonicAverage = 0; //holds the calculated rolling average from the ultrasonic sensor's samples
+bool ultrasonicRun = 1; //1 to run the ultrasonic sensor, 0 to not. stop running if you need to free up some CPU cycles
+int ultrasonicSamples[20] = {0};
+
 //status LED!
 const int BLINK_PERIOD = 200; //ms between blinks
 bool ledState = 0;
-uint64_t prevTime = 0;
+uint64_t prevTimeLED = 0;
 
 void setup()
 {
@@ -45,8 +57,8 @@ void setup()
 }
 
 void loop() {
+  //do some math to figure out how to drive each motor
   Dabble.processInput();
-  //IDEA: calculate start velocity from distance from center, bias off of that
   float xRaw = GamePad.getXaxisData();
   float yRaw = GamePad.getYaxisData();
   float xBias = -abs(xRaw) / 7 + 1;
@@ -69,10 +81,31 @@ void loop() {
   lMotor.setSpeedDirection(lVel);
   rMotor.setSpeedDirection(rVel);
 
-  if (millis() > prevTime + BLINK_PERIOD)
+  //handle blinking the ESP32's built-in LED
+  if (millis() > prevTimeLED + BLINK_PERIOD)
   {
     digitalWrite(LED_BUILTIN, ledState);
     ledState = !ledState;
-    prevTime = millis();
+    prevTimeLED = millis();
+  }
+
+  //handle getting and averaging samples from the ultrasonic sensor
+  if (ultrasonicRun)
+  {
+    if (millis() > prevTimeUltrasonic + ULTRASONIC_PERIOD)
+    {
+      ultrasonicSamples[ultrasonicAverageIndex++] = ultrasonic.Ranging(CM);
+      if (ultrasonicAverageIndex >= ULTRASONIC_NUM_SAMPLES) ultrasonicAverageIndex = 0;
+
+      ultrasonicSum = 0;
+      for (int i = 0; i < ULTRASONIC_NUM_SAMPLES; i++)
+      {
+        ultrasonicSum += ultrasonicSamples[i];  
+      }
+
+      ultrasonicAverage = ultrasonicSum / ULTRASONIC_NUM_SAMPLES;
+      
+      prevTimeUltrasonic = millis();
+    }
   }
 }
