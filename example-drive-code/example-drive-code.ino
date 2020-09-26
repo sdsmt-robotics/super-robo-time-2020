@@ -37,7 +37,7 @@ int ultrasonicAverageIndex = 0; //keeps track of where in the rolling average ar
 int ultrasonicSum = 0; //don't directly read this, use the average. used in calculating the average
 int ultrasonicAverage = 0; //holds the calculated rolling average from the ultrasonic sensor's samples
 bool ultrasonicRun = 1; //1 to run the ultrasonic sensor, 0 to not. stop running if you need to free up some CPU cycles
-int ultrasonicSamples[20] = {0};
+int ultrasonicSamples[ULTRASONIC_NUM_SAMPLES] = {0};
 
 //status LED!
 const int BLINK_PERIOD = 200; //ms between blinks
