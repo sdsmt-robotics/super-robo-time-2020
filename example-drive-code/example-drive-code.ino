@@ -22,6 +22,9 @@ This code has no copyright license, do whatever you want with it
 #include <L289N.h>       // https://github.com/sdsmt-robotics/L298N
 #include <analogWrite.h> // https://github.com/ERROPiX/ESP32_AnalogWrite
 #include <Ultrasonic.h>  // https://github.com/JRodrigoTech/Ultrasonic-HC-SR04
+#include <FastLED.h>     // https://github.com/FastLED/FastLED
+
+#include "batterySense.h"
 
 //motor driver setup
 L289N rMotor(23, 22, 21, true);
@@ -32,17 +35,29 @@ int lVel, rVel;
 Ultrasonic ultrasonic(16, 17); //TRIG, ECHO
 const int ULTRASONIC_NUM_SAMPLES = 20; //number of samples to average across
 const int ULTRASONIC_PERIOD = 5; //milliseconds between samples
-uint64_t prevTimeUltrasonic = 0; //keeps track of the last time we grabbed a sample from the ultrasonic sensor
+uint64_t ultrasonicPrevTime = 0; //keeps track of the last time we grabbed a sample from the ultrasonic sensor
 int ultrasonicAverageIndex = 0; //keeps track of where in the rolling average array we should write to
 int ultrasonicSum = 0; //don't directly read this, use the average. used in calculating the average
 int ultrasonicAverage = 0; //holds the calculated rolling average from the ultrasonic sensor's samples
 bool ultrasonicRun = 1; //1 to run the ultrasonic sensor, 0 to not. stop running if you need to free up some CPU cycles
-int ultrasonicSamples[ULTRASONIC_NUM_SAMPLES] = {0};
+int ultrasonicSamples[ULTRASONIC_NUM_SAMPLES] = {0}; //holds the samples used to calculate the average
 
 //status LED!
 const int BLINK_PERIOD = 200; //ms between blinks
 bool ledState = 0;
-uint64_t prevTimeLED = 0;
+uint32_t prevTimeLED = 0;
+
+//battery voltage sensor
+SRTBatterySense battery(A0);
+
+//LED strip
+FASTLED_USING_NAMESPACE
+#define LED_TYPE WS2812B
+#define COLOR_ORDER GRB
+const int DATA_PIN = 15;
+const int NUM_LEDS = 8;
+const int BRIGHTNESS = 96;
+CRGB ledStrip[NUM_LEDS];
 
 void setup()
 {
@@ -53,10 +68,26 @@ void setup()
   lMotor.init();
   rMotor.init();
 
+  battery.init();
+
   pinMode(LED_BUILTIN, OUTPUT);
+
+  FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(ledStrip, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  FastLED.setBrightness(BRIGHTNESS);
+
+  for (int i = 0; i < NUM_LEDS; i++)
+  {
+    ledStrip[i] = CRGB::Red;
+  }
+  FastLED.show();
 }
 
 void loop() {
+  if (battery.getRollingAverage() < 7)
+  {
+    stopRobot(); 
+  }
+  
   //do some math to figure out how to drive each motor
   Dabble.processInput();
   float xRaw = GamePad.getXaxisData();
@@ -78,8 +109,8 @@ void loop() {
     lVel *= xBias;
   }
 
-  lMotor.setSpeedDirection(lVel);
-  rMotor.setSpeedDirection(rVel);
+  lMotor.setSpeedDirection(lVel, true);
+  rMotor.setSpeedDirection(rVel, true);
 
   //handle blinking the ESP32's built-in LED
   if (millis() > prevTimeLED + BLINK_PERIOD)
@@ -87,12 +118,13 @@ void loop() {
     digitalWrite(LED_BUILTIN, ledState);
     ledState = !ledState;
     prevTimeLED = millis();
+    Serial.println(ledState);
   }
 
   //handle getting and averaging samples from the ultrasonic sensor
   if (ultrasonicRun)
   {
-    if (millis() > prevTimeUltrasonic + ULTRASONIC_PERIOD)
+    if (millis() > ultrasonicPrevTime + ULTRASONIC_PERIOD)
     {
       ultrasonicSamples[ultrasonicAverageIndex++] = ultrasonic.Ranging(CM);
       if (ultrasonicAverageIndex >= ULTRASONIC_NUM_SAMPLES) ultrasonicAverageIndex = 0;
@@ -105,7 +137,25 @@ void loop() {
 
       ultrasonicAverage = ultrasonicSum / ULTRASONIC_NUM_SAMPLES;
       
-      prevTimeUltrasonic = millis();
+      ultrasonicPrevTime = millis();
     }
   }
+}
+
+void stopRobot()
+{
+  lMotor.setSpeedDirection(0);
+  rMotor.setSpeedDirection(0);
+  
+  do
+  {
+    digitalWrite(LED_BUILTIN, 1);
+    delay(200);
+    digitalWrite(LED_BUILTIN, 0);
+    delay(100);
+    digitalWrite(LED_BUILTIN, 1);
+    delay(200);
+    digitalWrite(LED_BUILTIN, 0);
+    delay(2000);
+  } while (true);
 }
