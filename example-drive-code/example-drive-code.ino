@@ -57,7 +57,7 @@ FASTLED_USING_NAMESPACE
 #define COLOR_ORDER GRB
 const int DATA_PIN = 15;
 const int NUM_LEDS = 8;
-const int BRIGHTNESS = 96;
+const int BRIGHTNESS = 40;
 CRGB ledStrip[NUM_LEDS];
 
 //claw
@@ -82,7 +82,7 @@ void setup()
 
   for (int i = 0; i < NUM_LEDS; i++)
   {
-    ledStrip[i] = CRGB::Red;
+    ledStrip[i] = CRGB::Green;
   }
   FastLED.show();
 }
@@ -153,10 +153,28 @@ void stopRobot()
 {
   lMotor.setSpeedDirection(0);
   rMotor.setSpeedDirection(0);
-  
+
+  //set whole LED strip to black
+  int i;
+  for (i = 0; i < NUM_LEDS; i++)
+  {
+    ledStrip[i] = CRGB::Black;
+  }
+  FastLED.show();
+
+  i = 0;
   do
   {
-    Serial.println("STOP");
+    //light one LED red at a time, one after the other
+    ledStrip[i++] = CRGB::Black;
+    if (i >= NUM_LEDS)
+    {
+      i = 0;
+    }
+    ledStrip[i] = CRGB::Red;
+    FastLED.show();
+
+    //two short pulses on the onboard LED
     digitalWrite(LED_BUILTIN, 1);
     delay(200);
     digitalWrite(LED_BUILTIN, 0);
