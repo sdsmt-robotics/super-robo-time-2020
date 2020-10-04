@@ -25,6 +25,7 @@ This code has no copyright license, do whatever you want with it
 #include <FastLED.h>     // https://github.com/FastLED/FastLED
 
 #include "batterySense.h"
+#include "claw.h"
 
 //motor driver setup
 L289N rMotor(23, 22, 21, true);
@@ -59,6 +60,9 @@ const int NUM_LEDS = 8;
 const int BRIGHTNESS = 96;
 CRGB ledStrip[NUM_LEDS];
 
+//claw
+SRTClaw claw(11);
+
 void setup()
 {
   Serial.begin(115200);
@@ -69,6 +73,7 @@ void setup()
   rMotor.init();
 
   battery.init();
+  claw.init();
 
   pinMode(LED_BUILTIN, OUTPUT);
 
