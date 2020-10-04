@@ -61,7 +61,7 @@ const int BRIGHTNESS = 96;
 CRGB ledStrip[NUM_LEDS];
 
 //claw
-SRTClaw claw(11);
+SRTClaw claw(10);
 
 void setup()
 {
@@ -71,9 +71,9 @@ void setup()
   analogWriteFrequency(2000);
   lMotor.init();
   rMotor.init();
+  claw.init(2); //claw MUST be initialized AFTER the motors on ledc channel >= 2
 
   battery.init();
-  claw.init();
 
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -145,6 +145,8 @@ void loop() {
       ultrasonicPrevTime = millis();
     }
   }
+
+  Serial.println(ultrasonicAverage);
 }
 
 void stopRobot()
@@ -154,6 +156,7 @@ void stopRobot()
   
   do
   {
+    Serial.println("STOP");
     digitalWrite(LED_BUILTIN, 1);
     delay(200);
     digitalWrite(LED_BUILTIN, 0);
