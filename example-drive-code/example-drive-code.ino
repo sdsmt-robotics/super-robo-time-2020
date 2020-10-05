@@ -25,6 +25,8 @@ This code has no copyright license, do whatever you want with it
 #include <FastLED.h>     // https://github.com/FastLED/FastLED
 
 #include "batterySense.h"
+#include "claw.h"
+#include "line.h"
 
 //motor driver setup
 L289N rMotor(23, 22, 21, true);
@@ -34,7 +36,7 @@ int lVel, rVel;
 //ultrasonic distance sensor setup
 Ultrasonic ultrasonic(16, 17); //TRIG, ECHO
 const int ULTRASONIC_NUM_SAMPLES = 20; //number of samples to average across
-const int ULTRASONIC_PERIOD = 5; //milliseconds between samples
+const int ULTRASONIC_PERIOD = 1; //milliseconds between samples
 uint64_t ultrasonicPrevTime = 0; //keeps track of the last time we grabbed a sample from the ultrasonic sensor
 int ultrasonicAverageIndex = 0; //keeps track of where in the rolling average array we should write to
 int ultrasonicSum = 0; //don't directly read this, use the average. used in calculating the average
@@ -56,8 +58,14 @@ FASTLED_USING_NAMESPACE
 #define COLOR_ORDER GRB
 const int DATA_PIN = 15;
 const int NUM_LEDS = 8;
-const int BRIGHTNESS = 96;
+const int BRIGHTNESS = 40;
 CRGB ledStrip[NUM_LEDS];
+
+//claw
+SRTClaw claw(10);
+
+//infrared line sensor
+SRTLine line(A3);
 
 void setup()
 {
@@ -67,7 +75,8 @@ void setup()
   analogWriteFrequency(2000);
   lMotor.init();
   rMotor.init();
-
+  claw.init(2); //claw MUST be initialized AFTER the motors on ledc channel >= 2
+  line.init();
   battery.init();
 
   pinMode(LED_BUILTIN, OUTPUT);
@@ -77,7 +86,7 @@ void setup()
 
   for (int i = 0; i < NUM_LEDS; i++)
   {
-    ledStrip[i] = CRGB::Red;
+    ledStrip[i] = CRGB::Green;
   }
   FastLED.show();
 }
@@ -118,7 +127,6 @@ void loop() {
     digitalWrite(LED_BUILTIN, ledState);
     ledState = !ledState;
     prevTimeLED = millis();
-    Serial.println(ledState);
   }
 
   //handle getting and averaging samples from the ultrasonic sensor
@@ -146,9 +154,28 @@ void stopRobot()
 {
   lMotor.setSpeedDirection(0);
   rMotor.setSpeedDirection(0);
-  
+
+  //set whole LED strip to black
+  int i;
+  for (i = 0; i < NUM_LEDS; i++)
+  {
+    ledStrip[i] = CRGB::Black;
+  }
+  FastLED.show();
+
+  i = 0;
   do
   {
+    //light one LED red at a time, one after the other
+    ledStrip[i++] = CRGB::Black;
+    if (i >= NUM_LEDS)
+    {
+      i = 0;
+    }
+    ledStrip[i] = CRGB::Red;
+    FastLED.show();
+
+    //two short pulses on the onboard LED
     digitalWrite(LED_BUILTIN, 1);
     delay(200);
     digitalWrite(LED_BUILTIN, 0);
