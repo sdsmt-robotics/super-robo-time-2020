@@ -26,6 +26,7 @@ This code has no copyright license, do whatever you want with it
 
 #include "batterySense.h"
 #include "claw.h"
+#include "line.h"
 
 //motor driver setup
 L289N rMotor(23, 22, 21, true);
@@ -63,6 +64,9 @@ CRGB ledStrip[NUM_LEDS];
 //claw
 SRTClaw claw(10);
 
+//infrared line sensor
+SRTLine line(A3);
+
 void setup()
 {
   Serial.begin(115200);
@@ -72,7 +76,7 @@ void setup()
   lMotor.init();
   rMotor.init();
   claw.init(2); //claw MUST be initialized AFTER the motors on ledc channel >= 2
-
+  line.init();
   battery.init();
 
   pinMode(LED_BUILTIN, OUTPUT);
@@ -146,7 +150,9 @@ void loop() {
     }
   }
 
-  Serial.println(ultrasonicAverage);
+  Serial.print(line.onLine());
+  Serial.print('\t');
+  Serial.println(line.getValue());
 }
 
 void stopRobot()
