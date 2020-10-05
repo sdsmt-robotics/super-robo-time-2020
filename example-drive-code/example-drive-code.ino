@@ -36,7 +36,7 @@ int lVel, rVel;
 //ultrasonic distance sensor setup
 Ultrasonic ultrasonic(16, 17); //TRIG, ECHO
 const int ULTRASONIC_NUM_SAMPLES = 20; //number of samples to average across
-const int ULTRASONIC_PERIOD = 5; //milliseconds between samples
+const int ULTRASONIC_PERIOD = 1; //milliseconds between samples
 uint64_t ultrasonicPrevTime = 0; //keeps track of the last time we grabbed a sample from the ultrasonic sensor
 int ultrasonicAverageIndex = 0; //keeps track of where in the rolling average array we should write to
 int ultrasonicSum = 0; //don't directly read this, use the average. used in calculating the average
@@ -127,7 +127,6 @@ void loop() {
     digitalWrite(LED_BUILTIN, ledState);
     ledState = !ledState;
     prevTimeLED = millis();
-    Serial.println(ledState);
   }
 
   //handle getting and averaging samples from the ultrasonic sensor
@@ -149,10 +148,6 @@ void loop() {
       ultrasonicPrevTime = millis();
     }
   }
-
-  Serial.print(line.onLine());
-  Serial.print('\t');
-  Serial.println(line.getValue());
 }
 
 void stopRobot()

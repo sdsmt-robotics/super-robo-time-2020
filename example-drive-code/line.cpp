@@ -17,5 +17,5 @@ int SRTLine::getValue()
 
 bool SRTLine::onLine()
 {
-  return (getValue() > 50);
+  return (getValue() > 100);
 }
