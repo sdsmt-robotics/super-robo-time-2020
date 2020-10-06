@@ -27,6 +27,7 @@ This code has no copyright license, do whatever you want with it
 #include "batterySense.h"
 #include "claw.h"
 #include "line.h"
+#include "srt-ultrasonic.h"
 
 //motor driver setup
 L289N rMotor(23, 22, 21, true);
@@ -35,14 +36,7 @@ int lVel, rVel;
 
 //ultrasonic distance sensor setup
 Ultrasonic ultrasonic(16, 17); //TRIG, ECHO
-const int ULTRASONIC_NUM_SAMPLES = 20; //number of samples to average across
-const int ULTRASONIC_PERIOD = 1; //milliseconds between samples
-uint64_t ultrasonicPrevTime = 0; //keeps track of the last time we grabbed a sample from the ultrasonic sensor
-int ultrasonicAverageIndex = 0; //keeps track of where in the rolling average array we should write to
-int ultrasonicSum = 0; //don't directly read this, use the average. used in calculating the average
-int ultrasonicAverage = 0; //holds the calculated rolling average from the ultrasonic sensor's samples
-bool ultrasonicRun = 1; //1 to run the ultrasonic sensor, 0 to not. stop running if you need to free up some CPU cycles
-int ultrasonicSamples[ULTRASONIC_NUM_SAMPLES] = {0}; //holds the samples used to calculate the average
+SRTUltrasonic distance;
 
 //status LED!
 const int BLINK_PERIOD = 200; //ms between blinks
@@ -78,6 +72,7 @@ void setup()
   claw.init(2); //claw MUST be initialized AFTER the motors on ledc channel >= 2
   line.init();
   battery.init();
+  distance.init(&ultrasonic);
 
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -92,10 +87,14 @@ void setup()
 }
 
 void loop() {
+  //stop the bot if the battery is low
   if (battery.getRollingAverage() < 7)
   {
     stopRobot(); 
   }
+
+  //sample the ultrasonic sensor, this needs to run very frequently
+  distance.sample();
   
   //do some math to figure out how to drive each motor
   Dabble.processInput();
@@ -118,6 +117,7 @@ void loop() {
     lVel *= xBias;
   }
 
+  //set the motor speeds
   lMotor.setSpeedDirection(lVel, true);
   rMotor.setSpeedDirection(rVel, true);
 
@@ -127,27 +127,7 @@ void loop() {
     digitalWrite(LED_BUILTIN, ledState);
     ledState = !ledState;
     prevTimeLED = millis();
-  }
-
-  //handle getting and averaging samples from the ultrasonic sensor
-  if (ultrasonicRun)
-  {
-    if (millis() > ultrasonicPrevTime + ULTRASONIC_PERIOD)
-    {
-      ultrasonicSamples[ultrasonicAverageIndex++] = ultrasonic.Ranging(CM);
-      if (ultrasonicAverageIndex >= ULTRASONIC_NUM_SAMPLES) ultrasonicAverageIndex = 0;
-
-      ultrasonicSum = 0;
-      for (int i = 0; i < ULTRASONIC_NUM_SAMPLES; i++)
-      {
-        ultrasonicSum += ultrasonicSamples[i];  
-      }
-
-      ultrasonicAverage = ultrasonicSum / ULTRASONIC_NUM_SAMPLES;
-      
-      ultrasonicPrevTime = millis();
-    }
-  }
+  }  
 }
 
 void stopRobot()
